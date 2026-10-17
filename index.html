@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ACL·train</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Entraînement aux ACL Cisco (standard, étendues, nommées, plages horaires, NAT, inspection) sur le réseau du TD Architectures sécurisées.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Saira+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="3"/><path d="M8 13h6M8 19h10M20 13l4 3-4 3"/></svg>
+      <span class="brand-name">ACL<span class="dot">·</span>train</span>
+      <span class="brand-sub">R5.Cyber.09 · Architectures sécurisées</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" class="tab" role="tab" data-view="missions" aria-selected="true">Missions</button>
+      <button type="button" class="tab" role="tab" data-view="sandbox" aria-selected="false">Bac à sable</button>
+      <button type="button" class="tab" role="tab" data-view="quiz" aria-selected="false">Quiz éclair</button>
+      <button type="button" class="tab" role="tab" data-view="memo" aria-selected="false">Mémo</button>
+    </nav>
+    <div class="top-right">
+      <span class="stars-total" id="stars-total" title="Étoiles gagnées dans les missions"><span class="st-ic">★</span> 0 / 39</span>
+      <button type="button" id="theme-btn" class="icon-btn" aria-label="Basculer clair / sombre"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="app" class="layout" data-view="missions">
+  <!-- ===== Missions ===== -->
+  <aside class="pane" id="pane-missions">
+    <nav class="route" id="mission-map" aria-label="Parcours des missions"></nav>
+    <article class="mission" id="mission-card"></article>
+  </aside>
+
+  <!-- ===== Bac à sable ===== -->
+  <aside class="pane" id="pane-sandbox" hidden>
+    <article class="mission">
+      <p class="eyebrow">Configuration libre</p>
+      <h1>Bac à sable</h1>
+      <div class="brief">Le même routeur Ro, sans objectif imposé. Écris tes ACL, applique-les, puis envoie des paquets avec le testeur pour voir ce qui passe et pourquoi. Ta configuration est gardée dans ce navigateur.</div>
+      <h2 class="side-title">Point de départ</h2>
+      <div class="seg" id="sb-base">
+        <button type="button" class="seg-btn" data-base="td">Config du TD<span>NAT/PAT + redirections vers la DMZ</span></button>
+        <button type="button" class="seg-btn" data-base="vierge">Routeur vierge<span>ni NAT ni ACL</span></button>
+      </div>
+      <button type="button" class="btn" id="sb-reset">Remettre le bac à sable à zéro</button>
+      <h2 class="side-title">Exemples à taper</h2>
+      <div class="ideas" id="sb-ideas">
+        <button type="button" class="idea" data-type="configure terminal|access-list 120 deny tcp 172.16.2.0 0.0.0.255 any eq 23|access-list 120 permit ip any any|interface G0/1.2|ip access-group 120 in|end"><b>Pas de Telnet depuis le wifi</b><span>ACL étendue numérotée, en entrée de G0/1.2</span></button>
+        <button type="button" class="idea" data-type="configure terminal|ip access-list extended PING-DMZ|deny icmp any 172.17.0.0 0.0.255.255 echo|permit ip any any|exit|interface G0/0|ip access-group PING-DMZ out|end"><b>Personne ne pingue la DMZ</b><span>ACL nommée, type ICMP echo</span></button>
+        <button type="button" class="idea" data-type="configure terminal|time-range SOIR|periodic daily 18:00 to 20:00|exit|ip access-list extended SOIREE|deny tcp 172.16.1.0 0.0.0.255 any eq 443 time-range SOIR|permit ip any any|exit|interface G0/1.1|ip access-group SOIREE in|end"><b>HTTPS coupé le soir</b><span>time-range periodic daily</span></button>
+        <button type="button" class="idea" data-type="configure terminal|ip inspect name LEGITIME tcp|ip inspect name LEGITIME udp|ip inspect name LEGITIME icmp|interface S0/0|ip inspect LEGITIME out|end"><b>Inspection sur S0/0</b><span>Filtrage avec état des requêtes sortantes</span></button>
+      </div>
+      <h2 class="side-title">Raccourcis console</h2>
+      <ul class="keys">
+        <li><kbd>?</kbd> aide sur la commande en cours</li>
+        <li><kbd>Tab</kbd> complète le mot</li>
+        <li><kbd>↑</kbd> <kbd>↓</kbd> historique</li>
+        <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> retour au mode privilégié</li>
+        <li><kbd>Ctrl</kbd>+<kbd>L</kbd> efface l'écran</li>
+        <li>Abréviations Cisco : <code>conf t</code>, <code>int g0/1.1</code>, <code>do sh access-l</code></li>
+      </ul>
+    </article>
+  </aside>
+
+  <!-- ===== Console + labo (missions et bac à sable) ===== -->
+  <div class="work" id="work">
+    <section class="console" id="console" aria-label="Console du routeur">
+      <div class="console-head">
+        <span class="ch-title">Console · Ro</span>
+        <span class="ch-baud">9600 bauds · 8N1</span>
+        <span class="ch-mode" id="console-mode">mode privilégié</span>
+      </div>
+      <div class="console-out" id="term-out" role="log" aria-live="polite"></div>
+      <div class="console-in">
+        <label for="term-input" id="term-prompt">Ro#</label>
+        <input id="term-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" aria-describedby="term-hint">
+        <button type="button" class="term-tab" id="term-tab" aria-label="Compléter (Tab)">Tab</button>
+      </div>
+      <div class="console-hint" id="term-hint"></div>
+      <div class="console-chips" id="term-chips"></div>
+    </section>
+
+    <section class="lab" id="lab" aria-label="Réseau et testeur de paquets">
+      <div class="lab-head">
+        <h2>Réseau du TD</h2>
+        <p id="topo-help">Clique une machine source, puis une destination.</p>
+      </div>
+      <div class="topo-wrap"><svg id="topo" viewBox="0 0 800 456" role="img" aria-label="Topologie : Ro relie le réseau serveurs, le filaire, le wifi, la DMZ et Internet"></svg></div>
+      <div class="legend">
+        <span><i class="lg"></i>aller (requête)</span>
+        <span><i class="lg rep"></i>retour (réponse)</span>
+        <span><b>in</b> : le paquet entre dans Ro par l'interface · <b>out</b> : il en ressort</span>
+      </div>
+      <div class="lab-grid">
+        <form class="tester" id="tester">
+          <h3>Testeur de paquets</h3>
+          <div class="field"><label for="t-src">Source</label><select id="t-src"></select></div>
+          <div class="field"><label for="t-dst">Destination</label><select id="t-dst"></select></div>
+          <div class="field"><label for="t-svc">Service</label><select id="t-svc"></select></div>
+          <div class="field" id="t-port-field" hidden><label for="t-port">Port</label><input id="t-port" type="number" min="1" max="65535" value="8080"></div>
+          <div class="field">
+            <label for="t-when">Moment <span id="t-when-day" class="day"></span></label>
+            <input id="t-when" type="datetime-local">
+            <div class="presets" id="t-presets">
+              <button type="button" data-when="mar 10:00">mar. 10h</button>
+              <button type="button" data-when="mar 12:30">mar. 12h30</button>
+              <button type="button" data-when="sam 10:00">sam. 10h</button>
+              <button type="button" data-when="ven 19:00">ven. 19h</button>
+            </div>
+          </div>
+          <button class="btn primary" type="submit">Envoyer le paquet</button>
+        </form>
+        <div class="trace" id="trace" aria-live="polite"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== Quiz ===== -->
+  <section class="view" id="view-quiz" hidden>
+    <div class="quiz">
+      <div id="quiz-start" class="quiz-card">
+        <p class="eyebrow">10 questions</p>
+        <h1>Quiz éclair</h1>
+        <p class="lead">Des ACL à lire, des masques à calculer, des ports à reconnaître. À partir de 3 bonnes réponses d'affilée, les points doublent ; à partir de 6, ils triplent.</p>
+        <fieldset class="quiz-cats"><legend>Catégories</legend><div id="quiz-cats"></div></fieldset>
+        <button type="button" id="quiz-go" class="btn primary big">Lancer une partie</button>
+        <p class="quiz-best" id="quiz-best"></p>
+      </div>
+      <div id="quiz-play" class="quiz-card" hidden>
+        <div class="qz-bar">
+          <span id="qz-n" class="qz-n">1 / 10</span>
+          <div class="qz-progress"><i id="qz-prog"></i></div>
+          <span id="qz-streak" class="qz-streak"></span>
+          <span id="qz-score" class="qz-score">0 pts</span>
+        </div>
+        <p class="eyebrow" id="qz-cat"></p>
+        <div class="qz-q" id="qz-q"></div>
+        <div class="qz-a" id="qz-a"></div>
+        <div class="qz-fb" id="qz-fb" aria-live="polite"></div>
+        <button type="button" id="qz-next" class="btn primary" hidden>Question suivante</button>
+      </div>
+      <div id="quiz-end" class="quiz-card quiz-end" hidden></div>
+    </div>
+  </section>
+
+  <!-- ===== Mémo ===== -->
+  <section class="view" id="view-memo" hidden>
+    <div class="memo">
+      <header class="memo-head">
+        <p class="eyebrow">D'après le cours de L. Fontaine</p>
+        <h1>Mémo ACL Cisco</h1>
+      </header>
+
+      <article class="mcard wide">
+        <h2>Les trois façons d'écrire une ACL</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Type</th><th>Numéros</th><th>Ce qu'elle regarde</th><th>Où la placer</th></tr></thead>
+          <tbody>
+            <tr><td>Standard</td><td class="mono">1-99, 1300-1999</td><td>Adresse source seulement</td><td>Près de la <b>destination</b></td></tr>
+            <tr><td>Étendue</td><td class="mono">100-199, 2000-2699</td><td>Protocole, source, destination, ports</td><td>Près de la <b>source</b></td></tr>
+            <tr><td>Nommée</td><td class="mono">un nom</td><td>Standard ou étendue, au choix</td><td>Selon son type</td></tr>
+          </tbody>
+        </table></div>
+<pre class="code">Ro(config)# access-list 10 deny 172.16.2.0 0.0.0.255
+Ro(config)# access-list 110 permit tcp any host 172.17.0.1 eq 443
+Ro(config)# ip access-list extended DMZ-OUT
+Ro(config-ext-nacl)# 15 permit tcp any host 172.17.0.2 eq 993
+Ro(config)# interface G0/0
+Ro(config-if)# ip access-group DMZ-OUT out</pre>
+      </article>
+
+      <article class="mcard">
+        <h2>Masque générique</h2>
+        <p><b>Masque générique = 255.255.255.255 − masque réseau.</b> Un bit à 0 doit correspondre, un bit à 1 est libre.</p>
+        <div class="tbl"><table class="compact">
+          <thead><tr><th>Préfixe</th><th>Masque</th><th>Générique</th></tr></thead>
+          <tbody>
+            <tr><td>/32</td><td class="mono">255.255.255.255</td><td class="mono">0.0.0.0 = host</td></tr>
+            <tr><td>/30</td><td class="mono">255.255.255.252</td><td class="mono">0.0.0.3</td></tr>
+            <tr><td>/24</td><td class="mono">255.255.255.0</td><td class="mono">0.0.0.255</td></tr>
+            <tr><td>/22</td><td class="mono">255.255.252.0</td><td class="mono">0.0.3.255</td></tr>
+            <tr><td>/16</td><td class="mono">255.255.0.0</td><td class="mono">0.0.255.255</td></tr>
+            <tr><td>/0</td><td class="mono">0.0.0.0</td><td class="mono">255.255.255.255 = any</td></tr>
+          </tbody>
+        </table></div>
+        <div class="wc">
+          <label for="wc-in">Calculateur</label>
+          <input id="wc-in" type="text" value="172.16.4.0/22" spellcheck="false" autocomplete="off">
+          <div id="wc-out"></div>
+        </div>
+      </article>
+
+      <article class="mcard">
+        <h2>Comment Ro traite un paquet</h2>
+        <ol class="rules">
+          <li>Les lignes sont lues dans l'ordre. <b>La première qui correspond s'applique</b>, les suivantes sont ignorées.</li>
+          <li>Si aucune ne correspond : <b>deny implicite</b>. Pour tout autoriser par défaut : <code>permit any</code> ou <code>permit ip any any</code>.</li>
+          <li><b>Une seule ACL</b> par protocole (IPv4/IPv6), par sens et par interface.</li>
+          <li>Sens <b>IN</b> : ACL, puis redirection de ports. L'ACL voit encore 200.0.0.254.</li>
+          <li>Sens <b>OUT</b> : NAT, puis ACL. Sur S0/0, l'ACL voit déjà la source 200.0.0.254.</li>
+          <li>Une ACL appliquée mais <b>inexistante</b> laisse tout passer.</li>
+          <li>Règle d'or : mettre en place les ACL une par une et tester à chaque fois.</li>
+        </ol>
+      </article>
+
+      <article class="mcard">
+        <h2>Plages horaires</h2>
+<pre class="code">Ro(config)# time-range MIDI
+Ro(config-time-range)# periodic weekdays 12:00 to 14:00
+Ro(config-time-range)# absolute start 08:00 02 Nov 2026 end 18:00 18 Dec 2026
+Ro(config-ext-nacl)# permit ip any host 203.0.0.1 time-range MIDI</pre>
+        <p><code>weekdays</code> lundi-vendredi · <code>weekend</code> samedi-dimanche · <code>daily</code> tous les jours · jours en anglais (<code>monday</code>…). Hors plage, la règle est <b>ignorée</b> : le paquet passe aux lignes suivantes.</p>
+      </article>
+
+      <article class="mcard">
+        <h2>Les réponses : sans état et avec état</h2>
+        <p><b>Sans état</b>, chaque paquet est jugé seul. Pour laisser revenir les réponses :</p>
+<pre class="code">permit tcp any 172.16.0.0 0.0.255.255 established
+permit icmp any 172.16.0.0 0.0.255.255 echo-reply</pre>
+        <p><b>Avec état</b> (CBAC), on inspecte dans le sens des requêtes ; les réponses sont acceptées dans l'autre sens sur la même interface, même si une ACL les interdit :</p>
+<pre class="code">Ro(config)# ip inspect name LEGITIME tcp
+Ro(config)# ip inspect name LEGITIME udp
+Ro(config)# ip inspect name LEGITIME icmp
+Ro(config)# interface S0/0
+Ro(config-if)# ip inspect LEGITIME out</pre>
+        <p class="muted">FTP : privilégier le mode passif avec un filtrage avec état.</p>
+      </article>
+
+      <article class="mcard">
+        <h2>NAT/PAT et redirection</h2>
+<pre class="code">Ro(config-if)# ip nat inside        ! G0/0, G0/1.x
+Ro(config-if)# ip nat outside       ! S0/0
+Ro(config)# ip access-list standard NAT
+Ro(config-std-nacl)# permit 172.16.0.0 0.0.255.255
+Ro(config)# ip nat inside source list NAT interface S0/0 overload
+Ro(config)# ip nat inside source static tcp 172.17.0.1 443 200.0.0.254 443</pre>
+        <p>La PAT fait sortir tous les réseaux privés avec l'IP de S0/0. La redirection de ports publie un serveur privé sur un port de l'IP publique.</p>
+      </article>
+
+      <article class="mcard">
+        <h2>Filtrage par niveau de sécurité</h2>
+        <div class="levels">
+          <div class="lvl l0"><b>0</b><span>Internet, aucune confiance</span></div>
+          <div class="lvl l50"><b>50</b><span>DMZ, confiance partielle</span></div>
+          <div class="lvl l100"><b>100</b><span>LAN, forte confiance</span></div>
+        </div>
+        <p><b>Permit implicite</b> vers une zone de confiance plus faible ou égale, <b>deny implicite</b> vers une zone plus forte. L'inspection est active par défaut. Tout le reste se règle par ACL (par exemple ouvrir Internet → DMZ en 443).</p>
+      </article>
+
+      <article class="mcard">
+        <h2>Ports à connaître</h2>
+        <div class="tbl"><table class="compact ports">
+          <tbody>
+            <tr><td>FTP</td><td class="mono">TCP 20/21</td><td>HTTPS</td><td class="mono">TCP 443</td></tr>
+            <tr><td>SSH</td><td class="mono">TCP 22</td><td>SMTPs</td><td class="mono">TCP 465</td></tr>
+            <tr><td>Telnet</td><td class="mono">TCP 23</td><td>Submission</td><td class="mono">TCP 587</td></tr>
+            <tr><td>SMTP</td><td class="mono">TCP 25</td><td>LDAPs</td><td class="mono">TCP 636</td></tr>
+            <tr><td>DNS</td><td class="mono">UDP/TCP 53</td><td>IMAPs</td><td class="mono">TCP 993</td></tr>
+            <tr><td>DHCP</td><td class="mono">UDP 67/68</td><td>POPs</td><td class="mono">TCP 995</td></tr>
+            <tr><td>HTTP</td><td class="mono">TCP 80</td><td>RADIUS</td><td class="mono">UDP 1812</td></tr>
+            <tr><td>Kerberos</td><td class="mono">UDP 88</td><td>MySQL</td><td class="mono">TCP 3306</td></tr>
+            <tr><td>POP3</td><td class="mono">TCP 110</td><td>SIP</td><td class="mono">TCP 5060</td></tr>
+            <tr><td>NTP</td><td class="mono">UDP 123</td><td>SMB</td><td class="mono">TCP 445</td></tr>
+            <tr><td>IMAP</td><td class="mono">TCP 143</td><td>LDAP</td><td class="mono">TCP 389</td></tr>
+            <tr><td>SNMP</td><td class="mono">UDP 161/162</td><td>BGP</td><td class="mono">TCP 179</td></tr>
+          </tbody>
+        </table></div>
+        <p class="muted">Dans <code>show access-lists</code>, IOS affiche certains ports par leur nom : 80 → www, 53 → domain, 25 → smtp, 23 → telnet.</p>
+      </article>
+
+      <article class="mcard">
+        <h2>Vérifier et corriger</h2>
+        <dl class="cmds">
+          <dt><code>show access-lists</code></dt><dd>Les ACL, leurs numéros de ligne et les compteurs (N matches)</dd>
+          <dt><code>show ip interface G0/0</code></dt><dd>Quelle ACL est appliquée, dans quel sens</dd>
+          <dt><code>show running-config</code></dt><dd>Toute la configuration</dd>
+          <dt><code>show time-range</code></dt><dd>Les plages, (active) ou (inactive)</dd>
+          <dt><code>no 20</code></dt><dd>Dans une ACL nommée : supprime la ligne 20</dd>
+          <dt><code>15 permit …</code></dt><dd>Insère une ligne entre 10 et 20</dd>
+          <dt><code>ip access-list resequence NOM 10 10</code></dt><dd>Renumérote les lignes</dd>
+          <dt><code>no access-list 110</code></dt><dd>Supprime <b>toute</b> l'ACL 110, même suivi d'une règle</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="Mission réussie" id="modal-body"></div>
+</div>
+<canvas id="confetti" aria-hidden="true" hidden></canvas>
+
+<script src="js/net.js"></script>
+<script src="js/router.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/missions.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
